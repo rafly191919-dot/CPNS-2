@@ -1,6 +1,6 @@
 (()=>{'use strict';
 const Q=window.AOUT_QUESTIONS;if(!Array.isArray(Q)||Q.length!==110)throw new Error('Database soal tidak lengkap.');
-const LETTERS=['A','B','C','D','E'],CODE='aoutedu335',DOWNLOAD_CODE_HASH='392dfb1012dc8ce27424630345df5e3e50de35bd97971ed35c3cd939b769342e',EXAM_MS=100*60*1000,STORE='aoutEduCpns2026StatePaketTerbaruV1';
+const LETTERS=['A','B','C','D','E'],CODE='aoutedu335',BANK_ACCOUNT='568801018509530',DOWNLOAD_CODE_HASH='392dfb1012dc8ce27424630345df5e3e50de35bd97971ed35c3cd939b769342e',EXAM_MS=100*60*1000,STORE='aoutEduCpns2026StatePaketTerbaruV1';
 const $=id=>document.getElementById(id),views={access:$('accessView'),instruction:$('instructionView'),exam:$('examView'),result:$('resultView')};
 let state=loadState(),filter='all',tick=null,toastTimer=null;
 function blankState(){return{answers:{},marked:{},current:1,started:false,finished:false,endAt:null,startedAt:null,finishedAt:null,scores:null,downloadUnlocked:false,participant:{name:'',age:'',origin:'',occupation:''}}}
@@ -40,7 +40,51 @@ function score(){let twk=0,tiu=0,tkp=0;for(const q of Q){const a=state.answers[q
 function scoreLabel(section,value){const ranges={TWK:[[64,'Belum memenuhi'],[89,'Cukup'],[119,'Baik'],[139,'Sangat baik'],[150,'Istimewa']],TIU:[[79,'Belum memenuhi'],[109,'Cukup'],[139,'Baik'],[159,'Sangat baik'],[175,'Istimewa']],TKP:[[165,'Belum memenuhi'],[179,'Cukup'],[199,'Baik'],[214,'Sangat baik'],[225,'Istimewa']],TOTAL:[[310,'Perlu penguatan'],[374,'Cukup'],[449,'Baik'],[509,'Sangat baik'],[550,'Istimewa']]};return ranges[section].find(([max])=>value<=max)?.[1]||'—'}
 function pctLabel(p){return p<40?'Sangat perlu ditingkatkan':p<60?'Perlu ditingkatkan':p<75?'Cukup':p<90?'Baik':'Sangat kuat'}
 function pctClass(p){return p<40?'low':p<60?'mid':p<90?'good':'strong'}
-function reportData(){const groups={TWK:['Nasionalisme','Integritas','Bela Negara','Pilar Negara','Bahasa Negara'],TIU:['Verbal','Numerik','Figural'],TKP:['Pelayanan Publik','Jejaring Kerja','Sosial Budaya','Teknologi Informasi dan Komunikasi','Profesionalisme','Anti-radikalisme']},result={TWK:[],TIU:[],TKP:[]};for(const section of Object.keys(groups)){for(const name of groups[section]){const qs=Q.filter(q=>q.section===section&&q.subtopic===name),total=qs.length;if(section==='TKP'){const earned=qs.reduce((sum,q)=>sum+(q.scores?.[state.answers[q.id]]||0),0),max=total*5,pct=max?earned/max*100:0;result[section].push({name,total,earned,max,pct,label:pctLabel(pct)})}else{const correct=qs.filter(q=>state.answers[q.id]&&state.answers[q.id]===q.answer).length,wrong=total-correct,pct=total?correct/total*100:0;result[section].push({name,total,correct,wrong,pct,label:pctLabel(pct)})}}}return result}
+const REPORT_KISI={
+ TWK:[
+  {name:'Nasionalisme',from:1,to:6,total:6},
+  {name:'Integritas',from:7,to:10,total:4},
+  {name:'Bela Negara',from:11,to:14,total:4},
+  {name:'Pilar Negara',from:15,to:26,total:12},
+  {name:'Bahasa Negara',from:27,to:30,total:4}
+ ],
+ TIU:[
+  {name:'Figural',from:31,to:40,total:10},
+  {name:'Verbal',from:41,to:50,total:10},
+  {name:'Numerik & Logika',from:51,to:65,total:15}
+ ],
+ TKP:[
+  {name:'Integritas',from:66,to:73,total:8},
+  {name:'Pelayanan Publik',from:74,to:80,total:7},
+  {name:'Adaptasi',from:81,to:86,total:6},
+  {name:'Kerja Sama',from:87,to:92,total:6},
+  {name:'Profesionalisme',from:93,to:98,total:6},
+  {name:'Literasi Digital',from:99,to:103,total:5},
+  {name:'Sosial Budaya',from:104,to:108,total:5},
+  {name:'Bela Negara',from:109,to:110,total:2}
+ ]
+};
+function validateReportKisi(){
+ for(const [section,groups] of Object.entries(REPORT_KISI))for(const group of groups){
+  const qs=Q.filter(q=>q.section===section&&q.id>=group.from&&q.id<=group.to);
+  if(qs.length!==group.total)throw new Error(`Kisi-kisi report ${section} ${group.name} tidak sesuai database soal.`);
+ }
+}
+validateReportKisi();
+function reportData(){
+ const result={TWK:[],TIU:[],TKP:[]};
+ for(const [section,groups] of Object.entries(REPORT_KISI))for(const group of groups){
+  const qs=Q.filter(q=>q.section===section&&q.id>=group.from&&q.id<=group.to),total=qs.length;
+  if(section==='TKP'){
+   const earned=qs.reduce((sum,q)=>sum+(q.scores?.[state.answers[q.id]]||0),0),max=total*5,pct=max?earned/max*100:0;
+   result[section].push({...group,total,earned,max,pct,label:pctLabel(pct)});
+  }else{
+   const correct=qs.filter(q=>state.answers[q.id]&&state.answers[q.id]===q.answer).length,wrong=total-correct,pct=total?correct/total*100:0;
+   result[section].push({...group,total,correct,wrong,pct,label:pctLabel(pct)});
+  }
+ }
+ return result;
+}
 function finishExam(auto=false){clearInterval(tick);state.finished=true;state.finishedAt=Date.now();state.scores=score();save();closeFinish();showResults();if(auto)toast('Waktu habis. Jawaban dikumpulkan otomatis.')}
 function showResults(){
   showView('result');
@@ -93,7 +137,7 @@ function closeContribution(){
  document.body.style.overflow='';
 }
 async function copyBankAccount(){
- const number='568801018509539';
+ const number=BANK_ACCOUNT;
  try{
   if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(number);
   else{const ta=document.createElement('textarea');ta.value=number;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove()}
@@ -119,7 +163,7 @@ function sendContribution(e){
  }
  $('contributionError').textContent='';
  const nominal=new Intl.NumberFormat('id-ID').format(Number(amount));
- const msg=`Halo Kak Affi, saya sudah memberikan kontribusi seikhlasnya.\n\nNama: ${name}\nNominal Kontribusi: Rp${nominal}\nBank Pengirim: ${bank}\nTanggal Transfer: ${date}\nNomor WhatsApp: ${wa}\nRekening Tujuan: BRI 568801018509539\nAtas Nama: Rafly Agustin\n\nCatatan:\n${note||'-'}\n\nBukti transfer: ${file.name} (akan saya lampirkan pada chat WhatsApp)\n\nMohon dilakukan pengecekan. Terima kasih.`;
+ const msg=`Halo Kak Affi, saya sudah memberikan kontribusi seikhlasnya untuk mendukung revisi dan pengembangan Aout Edu.\n\nNama: ${name}\nNominal Kontribusi: Rp${nominal}\nBank Pengirim: ${bank}\nTanggal Transfer: ${date}\nNomor WhatsApp: ${wa}\nRekening Tujuan: BRI ${BANK_ACCOUNT}\nAtas Nama: Rafly Agustin\n\nCatatan:\n${note||'-'}\n\nBukti transfer: ${file.name} (akan saya lampirkan pada chat WhatsApp)\n\nMohon dilakukan pengecekan. Terima kasih.`;
  $('contributionSuccess').classList.remove('hidden');
  window.open(`https://wa.me/6285173479651?text=${encodeURIComponent(msg)}`,'_blank','noopener');
 }
@@ -175,7 +219,7 @@ async function buildReportPdf(){
   function card(x,yy,w,h,fill='#fff',stroke='#d9e4ec',radius=16){ctx.fillStyle=fill;ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(x,yy,w,h,radius);ctx.fill();ctx.stroke()}
   function tx(t,x,yy,font='14px Arial',color='#17233a',align='left'){ctx.font=font;ctx.fillStyle=color;ctx.textAlign=align;ctx.fillText(String(t),x,yy);ctx.textAlign='left'}
   function wrapped(t,x,yy,w,font='13px Arial',color='#68748a',lh=19){ctx.font=font;ctx.fillStyle=color;for(const line of wrap(ctx,t,w)){ctx.fillText(line,x,yy);yy+=lh}return yy}
-  function progressRow(row,section,yy,theme){const detail=section==='TKP'?`${row.earned}/${row.max} poin`:`${row.correct}/${row.total} benar`;card(M,yy,W-M*2,72,'#fff','#dce6ec',13);tx(row.name,M+16,yy+23,'700 13px Arial','#17233a');tx(`${detail} - ${row.pct.toFixed(1)}%`,W-M-16,yy+23,'12px Arial','#68748a','right');ctx.fillStyle='#e4ebef';ctx.beginPath();ctx.roundRect(M+16,yy+36,W-M*2-32,9,5);ctx.fill();ctx.fillStyle=theme.accent;ctx.beginPath();ctx.roundRect(M+16,yy+36,(W-M*2-32)*Math.min(100,row.pct)/100,9,5);ctx.fill();tx(row.label,M+16,yy+61,'700 11px Arial',theme.main);tx(`${row.total} soal`,W-M-16,yy+61,'11px Arial','#68748a','right');return yy+82}
+  function progressRow(row,section,yy,theme){const detail=section==='TKP'?`${row.earned}/${row.max} poin`:`${row.correct}/${row.total} benar`;card(M,yy,W-M*2,72,'#fff','#dce6ec',13);tx(row.name,M+16,yy+23,'700 13px Arial','#17233a');tx(`${detail} - ${row.pct.toFixed(1)}%`,W-M-16,yy+23,'12px Arial','#68748a','right');ctx.fillStyle='#e4ebef';ctx.beginPath();ctx.roundRect(M+16,yy+36,W-M*2-32,9,5);ctx.fill();ctx.fillStyle=theme.accent;ctx.beginPath();ctx.roundRect(M+16,yy+36,(W-M*2-32)*Math.min(100,row.pct)/100,9,5);ctx.fill();tx(row.label,M+16,yy+61,'700 11px Arial',theme.main);tx(`${row.total} soal · No. ${row.from}–${row.to}`,W-M-16,yy+61,'11px Arial','#68748a','right');return yy+82}
   function statusFor(q){const a=state.answers[q.id];if(!a)return'Kosong';return a===q.answer?'Benar':'Salah'}
   function statusGrid(qs,yy,theme,tkp=false){const cols=tkp?6:5,gap=9,w=(W-M*2-gap*(cols-1))/cols,h=tkp?53:58;for(let i=0;i<qs.length;i++){if(i>0&&i%cols===0)yy+=h+gap;if(yy+h>H-58){page(`${tkp?'TKP':'RIWAYAT'} - LANJUTAN`,theme.main);yy=y}const q=qs[i],x=M+(i%cols)*(w+gap);let status,color,soft;if(tkp){const a=state.answers[q.id];status=a?`Skor ${q.scores?.[a]||0}`:'Skor 0';color=theme.main;soft=theme.soft}else{status=statusFor(q);color=status==='Benar'?'#168960':status==='Salah'?'#c84f4f':'#7e8898';soft=status==='Benar'?'#eaf8f1':status==='Salah'?'#fff0ed':'#f0f3f6'}card(x,yy,w,h,soft,color,12);tx(`No. ${q.id}`,x+10,yy+20,'700 10px Arial','#68748a');tx(status,x+10,yy+43,'700 13px Arial',color)}return yy+h+18}
   function weakestRows(){const all=[...r.TWK.map(x=>({...x,section:'TWK'})),...r.TIU.map(x=>({...x,section:'TIU'})),...r.TKP.map(x=>({...x,section:'TKP'}))].sort((a,b)=>a.pct-b.pct);return{weak:all.slice(0,3),strong:[...all].sort((a,b)=>b.pct-a.pct).slice(0,3)}}
@@ -204,7 +248,7 @@ async function buildReportPdf(){
   const half=(W-M*2-18)/2;tx('KEKUATAN UTAMA',M+18,y+30,'700 12px Arial','#168960');ws.strong.forEach((v,i)=>{tx(`${i+1}. ${v.section} - ${v.name}`,M+18,y+63+i*48,'700 13px Arial','#17233a');tx(`${v.pct.toFixed(1)}% - ${v.label}`,M+18,y+83+i*48,'11px Arial','#68748a')});
   const rx=M+half+18;tx('PRIORITAS PENGUATAN',rx+18,y+30,'700 12px Arial','#a86b12');ws.weak.forEach((v,i)=>{tx(`${i+1}. ${v.section} - ${v.name}`,rx+18,y+63+i*48,'700 13px Arial','#17233a');tx(`${v.pct.toFixed(1)}% - ${v.label}`,rx+18,y+83+i*48,'11px Arial','#68748a')});y+=258;
   card(M,y,W-M*2,156,'#fff','#dce6ec');tx('REKOMENDASI',M+18,y+30,'700 12px Arial','#1fa8a5');let ry=y+58;ws.weak.forEach((v,i)=>{ry=wrapped(`${i+1}. Prioritaskan latihan ${v.section} - ${v.name}. Capaian saat ini ${v.pct.toFixed(1)}%; lakukan latihan terarah dan evaluasi ulang secara berkala.`,M+18,ry,W-M*2-36,'13px Arial','#3d4d63',20)+5});
-  y+=182;wrapped('Catatan: Report ini merupakan diagnosis otomatis berdasarkan database kategori soal dan jawaban peserta. Pembahasan lengkap tersedia melalui Kak Affi.',M,y,W-M*2,'12px Arial','#68748a',18);
+  y+=182;wrapped('Catatan: Parameter report mengikuti kisi-kisi berdasarkan nomor soal pada paket TWK, TIU, dan TKP terlampir. Hanya soal dalam rentang kisi-kisi terkait yang dihitung. Pembahasan lengkap tersedia melalui Kak Affi.',M,y,W-M*2,'12px Arial','#68748a',18);
   await canvasesToPdf(canvases,`Report_Detail_${safeFilename(p.name)}.pdf`);toast('Report detail berhasil diunduh.');
  }catch(e){console.error(e);toast('Report detail gagal dibuat. Gunakan browser terbaru.')}finally{btn.disabled=false;btn.textContent=old}
 }

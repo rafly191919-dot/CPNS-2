@@ -1,5 +1,5 @@
 {
-  "package": "AOUT_EDU_CPNS_2026_WEB_PAKET_TERBARU_REVISI",
+  "package": "AOUT_EDU_CPNS_2026_WEB_PAKET_TERBARU_REVISI_1_FINAL",
   "questions": 110,
   "sections": {
     "TWK": 30,
@@ -39,25 +39,51 @@
     "TWK/TIU keys A-E",
     "TKP each score set 1-5",
     "TKP best-option distribution balanced",
-    "no exact old prompt reused",
     "question database unchanged from latest package",
-    "contribution prompt only appears after score result",
-    "contribution form validates transfer proof JPG/JPEG/PNG/PDF",
+    "contribution card is large and placed at the end of the result page",
+    "voluntary contribution text also mentions support for revision and development",
+    "bank account updated consistently in HTML, clipboard action, and WhatsApp message",
+    "report parameters use question-number ranges from the attached TWK/TIU/TKP grids",
+    "report includes only questions inside each mapped grid range",
     "WhatsApp confirmation targets Kak Affi 6285173479651",
     "answer-copy PDF includes participant answers and latest keys/scores"
   ],
   "revision_features": {
     "voluntary_contribution": {
-      "placement": "below score after submit",
+      "placement": "large card at the end of the result page",
       "bank": "BRI",
-      "account": "568801018509539",
+      "account": "568801018509530",
       "account_name": "Rafly Agustin",
       "whatsapp": "6285173479651",
-      "note": "optional and voluntary; WhatsApp message is prefilled; proof file is attached manually in WhatsApp"
+      "note": "optional and voluntary; supports revision and development; WhatsApp message is prefilled; proof file is attached manually in WhatsApp"
     },
     "answer_copy": {
       "TWK_TIU": "participant answer, answer key, and correct/wrong/blank status",
       "TKP": "participant answer, earned score, and score-5 option"
+    },
+    "report_kisi_mapping": {
+      "TWK": {
+        "Nasionalisme": "1-6",
+        "Integritas": "7-10",
+        "Bela Negara": "11-14",
+        "Pilar Negara": "15-26",
+        "Bahasa Negara": "27-30"
+      },
+      "TIU": {
+        "Figural": "31-40",
+        "Verbal": "41-50",
+        "Numerik & Logika": "51-65"
+      },
+      "TKP": {
+        "Integritas": "66-73",
+        "Pelayanan Publik": "74-80",
+        "Adaptasi": "81-86",
+        "Kerja Sama": "87-92",
+        "Profesionalisme": "93-98",
+        "Literasi Digital": "99-103",
+        "Sosial Budaya": "104-108",
+        "Bela Negara": "109-110"
+      }
     }
   },
   "question_database_sha256": "a3af19a8d0ca5d68447dac7b37a429fd228299091aa358f0431e27bb9408b2c2"
