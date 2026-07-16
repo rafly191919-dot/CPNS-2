@@ -1,6 +1,6 @@
 (()=>{'use strict';
 const Q=window.AOUT_QUESTIONS;if(!Array.isArray(Q)||Q.length!==110)throw new Error('Database soal tidak lengkap.');
-const LETTERS=['A','B','C','D','E'],CODE='aoutedu335',DOWNLOAD_CODE_HASH='392dfb1012dc8ce27424630345df5e3e50de35bd97971ed35c3cd939b769342e',EXAM_MS=100*60*1000,STORE='aoutEduCpns2026StateV6';
+const LETTERS=['A','B','C','D','E'],CODE='aoutedu335',DOWNLOAD_CODE_HASH='392dfb1012dc8ce27424630345df5e3e50de35bd97971ed35c3cd939b769342e',EXAM_MS=100*60*1000,STORE='aoutEduCpns2026StatePaketTerbaruV1';
 const $=id=>document.getElementById(id),views={access:$('accessView'),instruction:$('instructionView'),exam:$('examView'),result:$('resultView')};
 let state=loadState(),filter='all',tick=null,toastTimer=null;
 function blankState(){return{answers:{},marked:{},current:1,started:false,finished:false,endAt:null,startedAt:null,finishedAt:null,scores:null,downloadUnlocked:false,participant:{name:'',age:'',origin:'',occupation:''}}}
@@ -75,7 +75,91 @@ function loadImage(src){return new Promise((res,rej)=>{const im=new Image();im.o
 function wrap(ctx,text,maxWidth){const words=String(text).split(/\s+/),lines=[];let line='';for(const w of words){const test=line?line+' '+w:w;if(ctx.measureText(test).width>maxWidth&&line){lines.push(line);line=w}else line=test}if(line)lines.push(line);return lines}
 function safeFilename(name){return String(name||'Peserta').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/^_+|_+$/g,'').slice(0,50)||'Peserta'}
 async function canvasesToPdf(canvases,filename){const jpgs=[];for(const c of canvases){const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.88));jpgs.push(new Uint8Array(await blob.arrayBuffer()))}const pdf=jpegPagesToPdf(jpgs,canvases[0].width,canvases[0].height),blob=new Blob([pdf],{type:'application/pdf'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),3000)}
-async function buildAnswerPdf(){const btn=$('downloadAnswerButton'),old=btn.textContent;btn.disabled=true;btn.textContent='Menyiapkan PDF…';try{const owie=await loadImage('assets/owie.png'),imgA=await loadImage('assets/gambar-a.jpeg'),imgB=await loadImage('assets/gambar-b.jpeg'),W=794,H=1123,M=54;let canvases=[],canvas,ctx,y;function newPage(title='JAWABAN SIMULASI SKD CPNS 2026'){canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;ctx=canvas.getContext('2d');ctx.fillStyle='#f4f8fb';ctx.fillRect(0,0,W,H);ctx.fillStyle='#0c2f5c';ctx.fillRect(0,0,W,88);ctx.fillStyle='#fff';ctx.font='700 20px Arial';ctx.fillText('AOUT EDU',M,36);ctx.font='700 16px Arial';ctx.fillText(title,M,63);ctx.drawImage(owie,W-108,10,62,62);y=118;canvases.push(canvas)}function ensure(h){if(y+h>H-54)newPage()}function text(t,x,w,font='14px Arial',color='#17233a',lh=20){ctx.font=font;ctx.fillStyle=color;const ls=wrap(ctx,t,w);ls.forEach(line=>{ctx.fillText(line,x,y);y+=lh})}function qText(q){ctx.font='14px Arial';const promptLines=wrap(ctx,q.prompt,W-M*2-28).length;ctx.font='13px Arial';const optionLines=q.options.reduce((n,o,i)=>n+wrap(ctx,`${LETTERS[i]}. ${o}`,W-M*2-18).length,0);ensure(Math.min(promptLines*20+optionLines*18+86,H-180));ctx.fillStyle='#0c2f5c';ctx.font='700 15px Arial';ctx.fillText(`${q.id}.`,M,y);const sy=y;text(q.prompt,M+28,W-M*2-28);y=Math.max(y,sy+20)+4;q.options.forEach((o,i)=>{ctx.fillStyle='#17233a';ctx.font='13px Arial';for(const line of wrap(ctx,`${LETTERS[i]}. ${o}`,W-M*2-18)){if(y>H-90)newPage();ctx.fillText(line,M+18,y);y+=18}});ctx.fillStyle='#1fa8a5';ctx.font='700 13px Arial';if(y>H-90)newPage();ctx.fillText(`Jawaban peserta: ${state.answers[q.id]||'Belum dijawab'}`,M+18,y+5);y+=34;ctx.strokeStyle='#d9e4ec';ctx.beginPath();ctx.moveTo(M,y);ctx.lineTo(W-M,y);ctx.stroke();y+=18}newPage('RINGKASAN SALINAN JAWABAN');ctx.fillStyle='#0c2f5c';ctx.font='700 32px Arial';ctx.fillText('Salinan Jawaban Saya',M,y+20);y+=56;ctx.font='14px Arial';ctx.fillStyle='#17233a';ctx.fillText(`Nama: ${state.participant?.name||'-'}`,M,y);y+=24;ctx.fillText(`Tanggal: ${new Date(state.finishedAt||Date.now()).toLocaleString('id-ID')}`,M,y);y+=36;ctx.fillStyle='#68748a';ctx.fillText('Dokumen memuat soal lengkap dan jawaban yang dipilih peserta.',M,y);y+=38;for(const q of Q.filter(x=>x.id<=30))qText(q);newPage('GAMBAR A — SOAL 31–36');let ar=imgA.width/imgA.height,aw=W-M*2,ah=aw/ar;if(ah>780){ah=780;aw=ah*ar}ctx.drawImage(imgA,(W-aw)/2,y,aw,ah);y+=ah+24;ctx.font='700 15px Arial';ctx.fillStyle='#0c2f5c';for(let id=31;id<=36;id++){ctx.fillText(`${id}. Jawaban peserta: ${state.answers[id]||'Belum dijawab'}`,M,y);y+=25}newPage('GAMBAR B — SOAL 37–40');let br=imgB.width/imgB.height,bw=W-M*2,bh=bw/br;if(bh>790){bh=790;bw=bh*br}ctx.drawImage(imgB,(W-bw)/2,y,bw,bh);y+=bh+24;ctx.font='700 15px Arial';ctx.fillStyle='#0c2f5c';for(let id=37;id<=40;id++){ctx.fillText(`${id}. Jawaban peserta: ${state.answers[id]||'Belum dijawab'}`,M,y);y+=25}for(const q of Q.filter(x=>x.id>=41))qText(q);await canvasesToPdf(canvases,`Salinan_Jawaban_${safeFilename(state.participant?.name)}.pdf`);toast('PDF salinan jawaban berhasil dibuat.')}catch(e){console.error(e);toast('PDF gagal dibuat. Gunakan browser terbaru.')}finally{btn.disabled=false;btn.textContent=old}}
+
+function openContribution(){
+ const modal=$('contributionModal');
+ $('contributionSuccess').classList.add('hidden');
+ $('contributionError').textContent='';
+ $('contributionIntroActions').classList.remove('hidden');
+ $('contributionForm').classList.add('hidden');
+ $('contributionForm').reset();
+ $('contributorName').value=state.participant?.name||'';
+ $('transferDate').value=new Date().toISOString().slice(0,10);
+ modal.classList.remove('hidden');
+ document.body.style.overflow='hidden';
+}
+function closeContribution(){
+ $('contributionModal').classList.add('hidden');
+ document.body.style.overflow='';
+}
+async function copyBankAccount(){
+ const number='568801018509539';
+ try{
+  if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(number);
+  else{const ta=document.createElement('textarea');ta.value=number;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove()}
+  toast('Nomor rekening berhasil disalin.');
+ }catch(e){console.error(e);toast(`Salin manual: ${number}`)}
+}
+function showContributionForm(){
+ $('contributionIntroActions').classList.add('hidden');
+ $('contributionForm').classList.remove('hidden');
+ $('contributorName').focus();
+}
+function validProof(file){
+ if(!file)return false;
+ const ext=(file.name.split('.').pop()||'').toLowerCase();
+ return ['jpg','jpeg','png','pdf'].includes(ext);
+}
+function sendContribution(e){
+ e.preventDefault();
+ const name=$('contributorName').value.trim(),amount=$('contributionAmount').value.trim(),bank=$('senderBank').value.trim(),date=$('transferDate').value,wa=$('senderWhatsapp').value.trim(),note=$('contributionNote').value.trim(),file=$('transferProof').files[0];
+ if(!name||!amount||Number(amount)<=0||!bank||!date||!wa||!validProof(file)){
+  $('contributionError').textContent='Lengkapi data transfer dan pilih bukti berformat JPG, JPEG, PNG, atau PDF.';
+  return;
+ }
+ $('contributionError').textContent='';
+ const nominal=new Intl.NumberFormat('id-ID').format(Number(amount));
+ const msg=`Halo Kak Affi, saya sudah memberikan kontribusi seikhlasnya.\n\nNama: ${name}\nNominal Kontribusi: Rp${nominal}\nBank Pengirim: ${bank}\nTanggal Transfer: ${date}\nNomor WhatsApp: ${wa}\nRekening Tujuan: BRI 568801018509539\nAtas Nama: Rafly Agustin\n\nCatatan:\n${note||'-'}\n\nBukti transfer: ${file.name} (akan saya lampirkan pada chat WhatsApp)\n\nMohon dilakukan pengecekan. Terima kasih.`;
+ $('contributionSuccess').classList.remove('hidden');
+ window.open(`https://wa.me/6285173479651?text=${encodeURIComponent(msg)}`,'_blank','noopener');
+}
+async function buildAnswerPdf(){
+ const btn=$('downloadAnswerButton'),old=btn.textContent;btn.disabled=true;btn.textContent='Menyiapkan PDF…';
+ try{
+  const owie=await loadImage('assets/owie.png'),imgA=await loadImage('assets/gambar-a.jpeg'),imgB=await loadImage('assets/gambar-b.jpeg'),W=794,H=1123,M=54;
+  let canvases=[],canvas,ctx,y;
+  function newPage(title='SALINAN SOAL, JAWABAN & KUNCI'){
+   canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;ctx=canvas.getContext('2d');
+   ctx.fillStyle='#f4f8fb';ctx.fillRect(0,0,W,H);ctx.fillStyle='#0c2f5c';ctx.fillRect(0,0,W,88);
+   ctx.fillStyle='#fff';ctx.font='700 20px Arial';ctx.fillText('AOUT EDU',M,36);ctx.font='700 16px Arial';ctx.fillText(title,M,63);ctx.drawImage(owie,W-108,10,62,62);y=118;canvases.push(canvas)
+  }
+  function ensure(h){if(y+h>H-54)newPage()}
+  function text(t,x,w,font='14px Arial',color='#17233a',lh=20){ctx.font=font;ctx.fillStyle=color;const ls=wrap(ctx,t,w);ls.forEach(line=>{ctx.fillText(line,x,y);y+=lh})}
+  function resultMeta(q){
+   const chosen=state.answers[q.id]||'Belum dijawab';
+   if(q.id<=65){const status=chosen==='Belum dijawab'?'Tidak dijawab':chosen===q.answer?'Benar':'Salah';return{line:`Jawaban peserta: ${chosen}  |  Kunci: ${q.answer}  |  Status: ${status}`,color:status==='Benar'?'#168960':status==='Salah'?'#c84f4f':'#7e8898'}}
+   const score=chosen==='Belum dijawab'?0:(q.scores?.[chosen]||0),best=LETTERS.find(L=>q.scores?.[L]===5)||'-';
+   return{line:`Jawaban peserta: ${chosen}  |  Skor: ${score}  |  Opsi skor 5: ${best}`,color:'#a86b12'}
+  }
+  function qText(q){
+   ctx.font='14px Arial';const promptLines=wrap(ctx,q.prompt,W-M*2-28).length;ctx.font='13px Arial';const optionLines=q.options.reduce((n,o,i)=>n+wrap(ctx,`${LETTERS[i]}. ${o}`,W-M*2-18).length,0);
+   ensure(Math.min(promptLines*20+optionLines*18+108,H-180));ctx.fillStyle='#0c2f5c';ctx.font='700 15px Arial';ctx.fillText(`${q.id}.`,M,y);const sy=y;text(q.prompt,M+28,W-M*2-28);y=Math.max(y,sy+20)+4;
+   q.options.forEach((o,i)=>{ctx.fillStyle='#17233a';ctx.font='13px Arial';for(const line of wrap(ctx,`${LETTERS[i]}. ${o}`,W-M*2-18)){if(y>H-104)newPage();ctx.fillText(line,M+18,y);y+=18}});
+   const meta=resultMeta(q);if(y>H-88)newPage();ctx.fillStyle=meta.color;ctx.font='700 13px Arial';for(const line of wrap(ctx,meta.line,W-M*2-18)){ctx.fillText(line,M+18,y+5);y+=18}y+=18;
+   ctx.strokeStyle='#d9e4ec';ctx.beginPath();ctx.moveTo(M,y);ctx.lineTo(W-M,y);ctx.stroke();y+=18
+  }
+  function figuralPage(title,img,ids){
+   newPage(title);const ratio=img.width/img.height;let iw=W-M*2,ih=iw/ratio;const maxH=ids.length>4?650:720;if(ih>maxH){ih=maxH;iw=ih*ratio}ctx.drawImage(img,(W-iw)/2,y,iw,ih);y+=ih+22;
+   ctx.font='700 13px Arial';for(const id of ids){const q=qById(id),meta=resultMeta(q);if(y>H-78)newPage(`${title} — LANJUTAN`);ctx.fillStyle=meta.color;for(const line of wrap(ctx,`${id}. ${meta.line}`,W-M*2)){ctx.fillText(line,M,y);y+=18}y+=9}
+  }
+  newPage('RINGKASAN SALINAN SOAL, JAWABAN & KUNCI');ctx.fillStyle='#0c2f5c';ctx.font='700 31px Arial';ctx.fillText('Salinan Hasil Pengerjaan',M,y+20);y+=56;ctx.font='14px Arial';ctx.fillStyle='#17233a';ctx.fillText(`Nama: ${state.participant?.name||'-'}`,M,y);y+=24;ctx.fillText(`Tanggal: ${new Date(state.finishedAt||Date.now()).toLocaleString('id-ID')}`,M,y);y+=34;ctx.fillStyle='#68748a';text('Dokumen memuat soal lengkap, jawaban peserta, kunci TWK/TIU, status benar-salah, serta skor dan opsi terbaik TKP.',M,W-M*2,'13px Arial','#68748a',19);y+=18;
+  for(const q of Q.filter(x=>x.id<=30))qText(q);
+  figuralPage('GAMBAR A — SOAL 31–36',imgA,[31,32,33,34,35,36]);
+  figuralPage('GAMBAR B — SOAL 37–40',imgB,[37,38,39,40]);
+  for(const q of Q.filter(x=>x.id>=41))qText(q);
+  await canvasesToPdf(canvases,`Salinan_Soal_Jawaban_Kunci_${safeFilename(state.participant?.name)}.pdf`);toast('PDF salinan soal, jawaban, dan kunci berhasil dibuat.');
+ }catch(e){console.error(e);toast('PDF gagal dibuat. Gunakan browser terbaru.')}finally{btn.disabled=false;btn.textContent=old}
+}
 async function buildReportPdf(){
  const btn=$('downloadReportButton'),old=btn.textContent;btn.disabled=true;btn.textContent='Menyiapkan report detail...';
  try{
@@ -126,8 +210,8 @@ async function buildReportPdf(){
 }
 function jpegPagesToPdf(images,pw,ph){const parts=[],offsets=[0];let pos=0;const add=v=>{const b=typeof v==='string'?new TextEncoder().encode(v):v;parts.push(b);pos+=b.length};add('%PDF-1.4\n%âãÏÓ\n');const n=images.length,objCount=2+n*3;const obj=(id,body)=>{offsets[id]=pos;add(`${id} 0 obj\n`);Array.isArray(body)?body.forEach(add):add(body);add('\nendobj\n')};obj(1,'<< /Type /Catalog /Pages 2 0 R >>');obj(2,`<< /Type /Pages /Kids [${images.map((_,i)=>`${3+i*3} 0 R`).join(' ')}] /Count ${n} >>`);images.forEach((img,i)=>{const pageId=3+i*3,imgId=pageId+1,contentId=pageId+2,name=`Im${i+1}`;obj(pageId,`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /XObject << /${name} ${imgId} 0 R >> >> /Contents ${contentId} 0 R >>`);obj(imgId,[`<< /Type /XObject /Subtype /Image /Width ${pw} /Height ${ph} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${img.length} >>\nstream\n`,img,'\nendstream']);const stream=`q\n595.28 0 0 841.89 0 0 cm\n/${name} Do\nQ`;obj(contentId,`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`)});const xref=pos;add(`xref\n0 ${objCount+1}\n0000000000 65535 f \n`);for(let i=1;i<=objCount;i++)add(`${String(offsets[i]||0).padStart(10,'0')} 00000 n \n`);add(`trailer\n<< /Size ${objCount+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);const len=parts.reduce((a,b)=>a+b.length,0),out=new Uint8Array(len);let o=0;for(const p of parts){out.set(p,o);o+=p.length}return out}
 function reset(){if(!confirm('Seluruh jawaban, data diri, skor, akses unduhan, dan laporan tersimpan pada perangkat ini akan dihapus. Apakah Anda yakin ingin mengulangi tes?'))return;localStorage.removeItem(STORE);sessionStorage.removeItem('aoutAccess');state=blankState();location.reload()}
-$('accessButton').onclick=authenticate;$('accessCode').addEventListener('keydown',e=>{if(e.key==='Enter')authenticate()});$('toggleCode').onclick=()=>{$('accessCode').type=$('accessCode').type==='password'?'text':'password'};['participantName','participantAge','participantOrigin','participantOccupation'].forEach(id=>$(id).addEventListener('input',()=>validateReady(false)));$('consent').onchange=()=>validateReady(false);$('startButton').onclick=startExam;$('resumeButton').onclick=resumeExam;$('prevButton').onclick=prev;$('nextButton').onclick=next;$('markButton').onclick=toggleMark;$('finishButton').onclick=openFinish;$('confirmFinish').onclick=()=>finishExam(false);document.querySelectorAll('[data-close-modal]').forEach(b=>b.onclick=closeFinish);$('drawerButton').onclick=openDrawer;$('drawerClose').onclick=closeDrawer;$('drawerBackdrop').onclick=closeDrawer;$('stripLeft').onclick=()=>$('numberStrip').scrollBy({left:-320,behavior:'smooth'});$('stripRight').onclick=()=>$('numberStrip').scrollBy({left:320,behavior:'smooth'});$('imageModalClose').onclick=()=>$('imageModal').classList.add('hidden');$('imageModal').addEventListener('click',e=>{if(e.target===$('imageModal'))$('imageModal').classList.add('hidden')});$('requestCodeButton').onclick=requestDownloadCode;$('discussionButton').onclick=requestDiscussion;$('unlockDownloadsButton').onclick=unlockDownloads;$('downloadCode').addEventListener('keydown',e=>{if(e.key==='Enter')unlockDownloads()});$('downloadAnswerButton').onclick=buildAnswerPdf;$('downloadReportButton').onclick=buildReportPdf;$('resetButton').onclick=reset;
+$('accessButton').onclick=authenticate;$('accessCode').addEventListener('keydown',e=>{if(e.key==='Enter')authenticate()});$('toggleCode').onclick=()=>{$('accessCode').type=$('accessCode').type==='password'?'text':'password'};['participantName','participantAge','participantOrigin','participantOccupation'].forEach(id=>$(id).addEventListener('input',()=>validateReady(false)));$('consent').onchange=()=>validateReady(false);$('startButton').onclick=startExam;$('resumeButton').onclick=resumeExam;$('prevButton').onclick=prev;$('nextButton').onclick=next;$('markButton').onclick=toggleMark;$('finishButton').onclick=openFinish;$('confirmFinish').onclick=()=>finishExam(false);document.querySelectorAll('[data-close-modal]').forEach(b=>b.onclick=closeFinish);$('drawerButton').onclick=openDrawer;$('drawerClose').onclick=closeDrawer;$('drawerBackdrop').onclick=closeDrawer;$('stripLeft').onclick=()=>$('numberStrip').scrollBy({left:-320,behavior:'smooth'});$('stripRight').onclick=()=>$('numberStrip').scrollBy({left:320,behavior:'smooth'});$('imageModalClose').onclick=()=>$('imageModal').classList.add('hidden');$('imageModal').addEventListener('click',e=>{if(e.target===$('imageModal'))$('imageModal').classList.add('hidden')});$('requestCodeButton').onclick=requestDownloadCode;$('discussionButton').onclick=requestDiscussion;$('unlockDownloadsButton').onclick=unlockDownloads;$('downloadCode').addEventListener('keydown',e=>{if(e.key==='Enter')unlockDownloads()});$('downloadAnswerButton').onclick=buildAnswerPdf;$('downloadReportButton').onclick=buildReportPdf;$('openContributionButton').onclick=openContribution;$('contributionModalClose').onclick=closeContribution;$('copyBankButton').onclick=copyBankAccount;$('showTransferFormButton').onclick=showContributionForm;$('contributionForm').addEventListener('submit',sendContribution);$('contributionModal').addEventListener('click',e=>{if(e.target===$('contributionModal'))closeContribution()});$('resetButton').onclick=reset;
 document.addEventListener('click',e=>{const go=e.target.closest('[data-go]');if(go)setCurrent(go.dataset.go);const ans=e.target.closest('[data-answer]');if(ans){const[id,L]=ans.dataset.answer.split(':');answer(Number(id),L)}const z=e.target.closest('[data-zoom]');if(z)openZoom(z.dataset.zoom);const ft=e.target.closest('[data-filter]');if(ft){filter=ft.dataset.filter;document.querySelectorAll('[data-filter]').forEach(b=>b.classList.toggle('active',b===ft));renderGrid()}});
-window.addEventListener('beforeunload',e=>{if(state.started&&!state.finished){e.preventDefault();e.returnValue=''}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('contributionModal').classList.contains('hidden'))closeContribution()});window.addEventListener('beforeunload',e=>{if(state.started&&!state.finished){e.preventDefault();e.returnValue=''}});
 if(sessionStorage.getItem('aoutAccess')==='1'){state.finished?showResults():prepareInstruction()}else showView('access');
 })();
